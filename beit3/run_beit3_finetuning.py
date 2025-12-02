@@ -5,7 +5,7 @@
 # Licensed under The MIT License [see LICENSE for details]
 # --------------------------------------------------------'
 
-import argparse
+import argparse 
 import datetime
 import numpy as np
 import time
@@ -28,31 +28,41 @@ from utils import NativeScalerWithGradNormCount as NativeScaler
 import utils
 import modeling_finetune
 
-
-def get_args():
-    parser = argparse.ArgumentParser('BEiT fine-tuning and evaluation script for image classification', add_help=False)
-
-    # Model parameters
+# An argument parser is a tool that helps a program accept and understand settings, options or parameters given by the user when running 
+# the program from the command line. It lets users customize the program's behavior without changing the code.
+def get_args(): 
+    # Creates an argument parser for the BEiT fine-tuning script, disabling the automatic help message 
+    parser = argparse.ArgumentParser('BEiT fine-tuning and evaluation script for image classification', add_help=False) #Change
+    ## Model parameters
+        # Specifies the model to train, with a default value of 'beit_base_patch16_224'.
+    # The help part provides a description for the user, explaining that it’s the model name to be trained
     parser.add_argument('--model', default='beit_base_patch16_224', type=str, metavar='MODEL',
                         help='Name of model to train')
+    # It's mandatory specify the task and use one dataset between the choices options
     parser.add_argument('--task', type=str, required=True, 
                         choices=['nlvr2', 'vqav2', 'flickr30k', 'coco_retrieval', 'coco_captioning', 'nocaps', 'imagenet'], 
-                        help='Name of task to fine-tuning')
-
+                        help='Name of task to fine-tuning') # Change
+    # Defines the size of input images
     parser.add_argument('--input_size', default=224, type=int,
                         help='images input size')
+    # Drop path rate: similar to dropout but instead of randomly dropping individual neurons, drop path randomly drops entire layers or paths during training.
     parser.add_argument('--drop_path', type=float, default=0.1, metavar='PCT',
                         help='Drop path rate (default: 0.1)')
-
+    # # Enables memory-saving checkpointing by storing activations to disk during training instead of keeping them in memory
     parser.add_argument('--checkpoint_activations', action='store_true', default=None, 
                         help='Enable checkpointing to save your memory.')
+    # Specifies the path to the SentencePiece model for the pretrained model
     parser.add_argument('--sentencepiece_model', type=str, required=True, 
                         help='Sentencepiece model path for the pretrained model.')
+    # Set vocabulary size
     parser.add_argument('--vocab_size', type=int, default=64010)
+    # Set the max number of BPE tokens
     parser.add_argument('--num_max_bpe_tokens', type=int, default=64)
-
+    # Avoid using Exponential Moving Average
     parser.add_argument('--model_ema', action='store_true', default=False)
+    # Set the decay rate for the Exponential Moving Average of model weights
     parser.add_argument('--model_ema_decay', type=float, default=0.9999, help='')
+    # Forces Exponential Moving Average calculation to not use CPU
     parser.add_argument('--model_ema_force_cpu', action='store_true', default=False, help='')
 
     # Optimizer parameters
