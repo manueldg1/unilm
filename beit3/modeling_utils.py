@@ -49,7 +49,11 @@ class BEiT3Wrapper(nn.Module):
     def __init__(self, args, **kwargs):
         super().__init__()
         self.args = args
+        # 1. Inizializzazione del modello BEiT-3 standard
         self.beit3 = BEiT3(args)
+        # 2. Logica di caricamento condizionale della proiezione multilingue
+        if hasattr(args, 'xlmr_emb_path') and args.xlmr_emb_path:
+            self._load_multilingual_embeddings(args.xlmr_emb_path)
         self.apply(self._init_weights)
 
     def fix_init_weight(self):
@@ -75,3 +79,42 @@ class BEiT3Wrapper(nn.Module):
         elif isinstance(m, nn.LayerNorm):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
+
+# 3. NUOVO METODO: Caricamento e Sostituzione degli Embedding
+    def _load_multilingual_embeddings(self, emb_path):
+        """Sostituisce gli embedding testuali di BEiT-3 con la matrice XLM-R proiettata."""
+        
+        # Stampa di debug per tracciare l'operazione
+        print(f"Loading and replacing text embeddings from {emb_path} for multilingual projection.")
+        
+        # Carica la matrice di embedding proiettata (su CPU per sicurezza)
+        try:
+            new_emb_weight = torch.load(emb_path, map_location='cpu') 
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Multilingual embedding file not found at: {emb_path}")
+
+        V, D = new_emb_weight.shape
+        
+        # Verifica che la dimensione dell'embedding (D) sia compatibile con l'encoder
+        expected_dim = self.args.encoder_embed_dim
+        if D != expected_dim:
+            raise ValueError(f"Embedding dimension mismatch: loaded {D} but expected {expected_dim}. Check your projection script.")
+        
+        # 1. Crea un nuovo layer nn.Embedding
+        new_text_embed = nn.Embedding(V, D)
+        
+        # 2. Carica i pesi proiettati nel nuovo layer
+        new_text_embed.weight.data.copy_(new_emb_weight)
+        
+        # 3. Sostituzione del layer originale
+        # Questo sovrascrive il modulo 'text_embed' all'interno di BEiT3 (torchscale)
+        self.beit3.text_embed = new_text_embed
+        
+        # 4. Aggiorna la dimensione del vocabolario negli argomenti
+        self.args.vocab_size = V
+        
+        print(f"Successfully replaced text embeddings. New vocab size: {V}.")
+        
+    def get_input_embeddings(self) -> nn.Embedding:
+        return self.beit3.text_embed
+            
