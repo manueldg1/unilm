@@ -48,7 +48,10 @@ def get_args():
     # Drop path rate: similar to dropout but instead of randomly dropping individual neurons, drop path randomly drops entire layers or paths during training.
     parser.add_argument('--drop_path', type=float, default=0.1, metavar='PCT',
                         help='Drop path rate (default: 0.1)')
-    # # Enables memory-saving checkpointing by storing activations to disk during training instead of keeping them in memory
+    parser.add_argument('--multilngual_projection', type=str, default='',
+        help='Pre-projected XLM-R embedding file for multilingual support'
+    )
+    # Enables memory-saving checkpointing by storing activations to disk during training instead of keeping them in memory
     parser.add_argument('--checkpoint_activations', action='store_true', default=None, 
                         help='Enable checkpointing to save your memory.')
     # Specifies the path to the SentencePiece model for the pretrained model
