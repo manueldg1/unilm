@@ -53,6 +53,39 @@ class Pooler(nn.Module):
         pooled_output = self.activation(pooled_output)
         return pooled_output
 
+class BEiT3ForValenceArousalRegression(BEiT3Wrapper):
+    def __init__(
+        self, 
+        args, 
+        norm_layer=nn.LayerNorm, 
+        **kwargs
+    ):
+        super().__init__(args=args) 
+        embed_dim = args.encoder_embed_dim
+        
+        self.pooler = Pooler(
+            input_features=embed_dim, 
+            output_features=embed_dim, 
+            norm_layer=norm_layer, 
+        )
+        self.pooler.apply(self._init_weights)
+        
+        self.regression_head = ValenceArousalHead(
+            input_features=embed_dim,
+        )
+        self.regression_head.apply(self._init_weights)
+
+    def forward(self, image, text_description, padding_mask, **kwargs):
+        outputs = self.beit3(
+            textual_tokens=text_description, 
+            visual_tokens=image, 
+            text_padding_position=padding_mask,
+        )
+        x = outputs["encoder_out"] 
+        cls_rep = self.pooler(x) 
+        valence_arousal_prediction = self.regression_head(cls_rep)
+        return valence_arousal_prediction
+
 
 class BEiT3ForVisualReasoning(BEiT3Wrapper):
     def __init__(
