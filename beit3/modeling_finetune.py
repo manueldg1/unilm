@@ -308,6 +308,13 @@ class BEiT3ForRetrieval(BEiT3Wrapper):
 
 
 @register_model
+def beit3_large_patch16_224_valence_arousal(pretrained=False, **kwargs):
+    args = _get_large_config(**kwargs) 
+    args.normalize_output = False 
+    model = BEiT3ForValenceArousalRegression(args, **kwargs)
+    return model
+
+@register_model
 def beit3_base_patch16_224_imageclassification(pretrained=False, **kwargs):
     args = _get_base_config(**kwargs)
     args.normalize_output = False
