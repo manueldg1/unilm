@@ -58,11 +58,13 @@ class BEiT3ForValenceArousalRegression(BEiT3Wrapper):
         self, 
         args, 
         norm_layer=nn.LayerNorm, 
+        hidden_features=256, # Added back hidden_features
         **kwargs
     ):
         super().__init__(args=args) 
         embed_dim = args.encoder_embed_dim
         
+        # 1. Pooler initialization
         self.pooler = Pooler(
             input_features=embed_dim, 
             output_features=embed_dim, 
@@ -70,22 +72,54 @@ class BEiT3ForValenceArousalRegression(BEiT3Wrapper):
         )
         self.pooler.apply(self._init_weights)
         
-        self.regression_head = ValenceArousalHead(
-            input_features=embed_dim,
+        # 2. Valence Head (using existing TwoLayerMLP)
+        self.valence_mlp = TwoLayerMLP(
+            in_features=embed_dim, 
+            hidden_features=hidden_features, 
+            out_features=1, # Output is a single Valence score
+            norm_layer=norm_layer,
+            norm_input=False, 
         )
-        self.regression_head.apply(self._init_weights)
+        self.valence_mlp.apply(self._init_weights)
+
+        # 3. Arousal Head (using existing TwoLayerMLP)
+        self.arousal_mlp = TwoLayerMLP(
+            in_features=embed_dim, 
+            hidden_features=hidden_features, 
+            out_features=1, # Output is a single Arousal score
+            norm_layer=norm_layer,
+            norm_input=False, 
+        )
+        self.arousal_mlp.apply(self._init_weights)
+        
+        # 4. Final Tanh activation
+        self.final_activation = nn.Tanh()
+
 
     def forward(self, image, text_description, padding_mask, **kwargs):
+        # Pass inputs through the BEiT-3 encoder
         outputs = self.beit3(
             textual_tokens=text_description, 
             visual_tokens=image, 
             text_padding_position=padding_mask,
         )
-        x = outputs["encoder_out"] 
-        cls_rep = self.pooler(x) 
-        valence_arousal_prediction = self.regression_head(cls_rep)
-        return valence_arousal_prediction
+        x = outputs["encoder_out"]
+        
+        # Extract the pooled fused CLS representation
+        cls_rep = self.pooler(x)
+        
+        # Pass the representation through the two independent regression heads
+        valence_raw = self.valence_mlp(cls_rep)
+        arousal_raw = self.arousal_mlp(cls_rep)
+        
+        # Apply Tanh to ensure scores are strictly between -1 and +1
+        valence_score = self.final_activation(valence_raw)
+        arousal_score = self.final_activation(arousal_raw)
 
+        # Concatenate scores to return a single tensor of shape (Batch_size, 2)
+        valence_arousal_prediction = torch.cat((valence_score, arousal_score), dim=-1)
+        
+        return valence_arousal_prediction
 
 class BEiT3ForVisualReasoning(BEiT3Wrapper):
     def __init__(
