@@ -789,6 +789,33 @@ class BertCaptioningLoss(nn.Module):
         return loss
 
 
+class MSERegressionMetric(Metric):
+    def __init__(self, dist_sync_on_step=False):
+        super().__init__(dist_sync_on_step=dist_sync_on_step)
+        # We track the sum of squared errors and the total number of samples
+        self.add_state("sum_sq_error", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("total_samples", default=torch.tensor(0), dist_reduce_fx="sum")
+
+    def update(self, preds, target):
+        # Move inputs to the correct device
+        preds, target = (
+            preds.detach().float().to(self.sum_sq_error.device),
+            target.detach().float().to(self.sum_sq_error.device),
+        )
+        
+        # Calculate squared error for the batch
+        squared_error = torch.sum((preds - target) ** 2)
+
+        self.sum_sq_error += squared_error
+        self.total_samples += preds.size(0) * preds.size(1) # size(0)=batch_size, size(1)=2 (V/A)
+
+    def compute(self):
+        # Calculate Mean Squared Error (MSE)
+        if self.total_samples == 0:
+            return torch.tensor(0.0, device=self.sum_sq_error.device)
+        return self.sum_sq_error / self.total_samples
+        
+
 class BeamHypotheses(object):
     def __init__(self, n_hyp, max_length, length_penalty, early_stopping):
         """
