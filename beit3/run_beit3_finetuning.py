@@ -32,7 +32,12 @@ import modeling_finetune
 # the program from the command line. It lets users customize the program's behavior without changing the code.
 def get_args(): 
     # Creates an argument parser for the BEiT fine-tuning script, disabling the automatic help message 
-    parser = argparse.ArgumentParser('BEiT fine-tuning and evaluation script for image classification', add_help=False) #Change
+    parser = argparse.ArgumentParser('BEiT fine-tuning and evaluation script for multilingual valence and arousal regression', add_help=False)
+    # Multilingual/XLM-R parameters
+    parser.add_argument('--xlmr_checkpoint_path', default=None, type=str,
+                        help='Path to the XLM-R checkpoint for language embedding initialization')
+    parser.add_argument('--xlmr_vocab_size', default=250002, type=int,
+                        help='Vocabulary size of the XLM-R model')
     ## Model parameters
         # Specifies the model to train, with a default value of 'beit_base_patch16_224'.
     # The help part provides a description for the user, explaining that it’s the model name to be trained
@@ -48,9 +53,6 @@ def get_args():
     # Drop path rate: similar to dropout but instead of randomly dropping individual neurons, drop path randomly drops entire layers or paths during training.
     parser.add_argument('--drop_path', type=float, default=0.1, metavar='PCT',
                         help='Drop path rate (default: 0.1)')
-    parser.add_argument('--multilngual_projection', type=str, default='',
-        help='Pre-projected XLM-R embedding file for multilingual support'
-    )
     # Enables memory-saving checkpointing by storing activations to disk during training instead of keeping them in memory
     parser.add_argument('--checkpoint_activations', action='store_true', default=None, 
                         help='Enable checkpointing to save your memory.')
